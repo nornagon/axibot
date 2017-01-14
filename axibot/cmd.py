@@ -99,6 +99,8 @@ def info(opts):
     td = job.duration()
     log.info("Number of moves: %s", len(job))
     log.info("Expected time: %s", human_friendly_timedelta(td))
+    for k, v in job.duration_stats().items():
+        log.info("  %s: %s", k, human_friendly_timedelta(v))
 
 
 def plot(opts):

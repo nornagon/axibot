@@ -25,7 +25,7 @@ SPEED_PEN_DOWN = 0.25 * SPEED_SCALE
 ACCEL_TIME_PEN_UP = 1000
 
 # Speed in ticks per millisecond.
-SPEED_PEN_UP = 0.75 * SPEED_SCALE
+SPEED_PEN_UP = 0.5 * SPEED_SCALE
 
 # Short-move pen-up distance threshold in inches, below which we use the faster
 # pen-down acceleration rate.
@@ -44,5 +44,5 @@ CURVE_RESOLUTION = 0.02
 MIN_GAP = 0.010
 
 # Positions in arbitrary servo range units, from 0 to 100.
-PEN_UP_POSITION = 60
+PEN_UP_POSITION = 75
 PEN_DOWN_POSITION = 50

@@ -227,7 +227,7 @@ def mess_with_dots(start, end, dots):
     return new_dots
 
 
-def dtarray_to_moves(start, end, dtarray):
+def dtarray_to_moves(start, end, dtarray, pen_up):
     """
     Given a start point, an end point, and an array of linear distances/times,
     return the actions to move between the two points, with one move per point
@@ -264,7 +264,7 @@ def dtarray_to_moves(start, end, dtarray):
             # Convert to AxiDraw coordinate space.
             m1 = dx + dy
             m2 = dx - dy
-            actions.append(XYMove(m1=m1, m2=m2, duration=duration))
+            actions.append(XYMove(m1=m1, m2=m2, duration=duration, pen_up=pen_up))
 
     check = check_x, check_y
     assert check == end, \
@@ -501,7 +501,7 @@ def interpolate_segment(segment, pen_up):
         if point != last_point:
             dist_array = interpolate_pair(last_point, last_speed,
                                           point, speed, pen_up)
-            actions.extend(dtarray_to_moves(last_point, point, dist_array))
+            actions.extend(dtarray_to_moves(last_point, point, dist_array, pen_up))
         last_point = point
         last_speed = speed
     return actions
@@ -524,7 +524,6 @@ def plan_actions(segments_with_speed, pen_up_delay, pen_down_delay):
         actions.extend(interpolate_segment(segment, pen_up))
     return actions
 
-
 def plan_job(document, filename):
     pen_up_position = config.PEN_UP_POSITION
     pen_down_position = config.PEN_DOWN_POSITION
@@ -538,6 +537,9 @@ def plan_job(document, filename):
     paths = svg.preprocess_paths(paths)
     log.info("Planning segments...")
     segments = svg.plan_segments(paths, resolution=config.CURVE_RESOLUTION)
+    #log.info("Optimizing segments...")
+    #segments = optimize(segments)
+    segments = svg.join_segments(segments, 0.01)
     log.info("Adding pen-up moves...")
     segments = svg.add_pen_up_moves(segments)
     log.info("Converting inches to steps...")

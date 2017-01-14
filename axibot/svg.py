@@ -53,7 +53,7 @@ def get_viewbox_dimensions(viewbox):
     return w, h
 
 
-def get_document_dimensions(tree, max_area=(11.0, 8.5)):
+def get_document_dimensions(tree, max_area=(12.0, 9)):
     """
     Return the dimensions of this document in inches as to be plotted. If the
     document specifies physical units, they will be converted to inches, and
@@ -256,8 +256,9 @@ def add_pen_up_moves(segments):
             next_seg_start = origin
         else:
             next_seg_start = segments[n][0]
-        inter_seg = [seg[-1], next_seg_start]
-        out_segments.append((inter_seg, True))
+        if seg[-1] != next_seg_start:
+            inter_seg = [seg[-1], next_seg_start]
+            out_segments.append((inter_seg, True))
 
     return out_segments
 
@@ -386,7 +387,9 @@ def split_disconnected_paths(paths):
 
 
 def distance_squared(a, b):
-    return ((b.real - a.real)**2) + ((b.imag - a.imag)**2)
+    dx = b.real - a.real
+    dy = b.imag - a.imag
+    return dx*dx + dy*dy
 
 
 def find_closest_path(current_point, paths):
@@ -414,8 +417,88 @@ def sort_paths(paths):
         out_paths.append(next_path)
     return out_paths
 
+def reverse_segment(segment):
+    from svg.path import Line, CubicBezier, QuadraticBezier, Arc
+    if isinstance(segment, Line):
+        return Line(segment.end, segment.start)
+    elif isinstance(segment, CubicBezier):
+        return CubicBezier(segment.end, segment.control2, segment.control1, segment.start)
+    elif isinstance(segment, QuadraticBezier):
+        return QuadraticBezier(segment.end, segment.control, segment.start)
+    elif isinstance(segment, Arc):
+        return Arc(segment.end, segment.radius, segment.rotation, segment.arc, not segment.sweep, segment.start)
+    raise TypeError("Expected Line, CubicBezier, QuadraticBezier or Arc, but got argument of type %s" % segment.__class__.__name__)
+
+def reverse_path(path):
+    reversed_elements = []
+    for seg in path:
+        reversed_elements.append(reverse_segment(seg))
+    return Path(*reversed(reversed_elements))
+
+def optimize_paths(paths):
+    from math import sqrt
+    from time import time
+    from ortools.constraint_solver import pywrapcp
+    from ortools.constraint_solver import routing_enums_pb2
+    import numpy as np
+    from scipy.spatial.distance import pdist, squareform
+
+    paths_with_reversed = paths + [reverse_path(p) for p in paths]
+    def PathDistance(i, j):
+        dist = sqrt(distance_squared(paths_with_reversed[i][-1].end, paths_with_reversed[j][0].start))
+        return round(dist * 100)
+
+    print("Computing distance matrix...")
+    tic = time()
+    N = len(paths)
+    X = np.array([[point.real, point.imag] for path in paths for point in [path[0].start, path[-1].end]])
+    Y = pdist(X, 'euclidean')
+    Ysquare = squareform(Y * 100)
+    def MemoizedDistance(i, j):
+        if i == j: return 0
+        if i >= N: # moving from the start of path i
+            i = (i-N)<<1
+        else:      # moving from the end of path i
+            i = (i<<1)+1
+        if j >= N: # moving to the end of path j
+            j = ((j-N)<<1)+1
+        else:      # moving to the start of path j
+            j = j<<1
+        return Ysquare[i,j]
+    print("Done in %.1f sec" % (time() - tic))
+
+    print("Building optimization model...")
+    routing = pywrapcp.RoutingModel(len(paths_with_reversed), 1, 0)
+    routing.SetArcCostEvaluatorOfAllVehicles(MemoizedDistance)
+    for i in range(len(paths)):
+        routing.AddDisjunction([i, i+len(paths)])
+
+    search_parameters = pywrapcp.RoutingModel.DefaultSearchParameters()
+    search_parameters.first_solution_strategy = (routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC)
+    #search_parameters.local_search_metaheuristic = (routing_enums_pb2.LocalSearchMetaheuristic.SIMULATED_ANNEALING)
+    #search_parameters.time_limit_ms = 300000
+    search_parameters.log_search = True
+    print("Finding initial assignment...")
+    search_parameters.solution_limit = 1
+    assignment = routing.SolveWithParameters(search_parameters)
+    print("Improving route...")
+    search_parameters.solution_limit = 1000000
+    search_parameters.time_limit_ms = 300000
+    assignment = routing.SolveFromAssignmentWithParameters(assignment, search_parameters)
+    if assignment:
+        node = routing.Start(0)
+        route = []
+        while not routing.IsEnd(node):
+            route.append(node)
+            node = assignment.Value(routing.NextVar(node))
+        optimized_paths = [paths_with_reversed[route[i]] for i in range(len(route))]
+        assert len(optimized_paths) == len(paths)
+        return optimized_paths
+    else:
+        return paths
+
 
 def preprocess_paths(paths):
     paths = split_disconnected_paths(paths)
-    paths = sort_paths(paths)
+    paths = optimize_paths(paths)
     return paths

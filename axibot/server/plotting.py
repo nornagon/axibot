@@ -73,7 +73,7 @@ def plan_deceleration(app, position, v):
     # Plan the actions for this deceleration segment.
     dtarray = planning.interpolate_pair(position, vmag,
                                         end, 0, app['pen_up'])
-    return end, planning.dtarray_to_moves(position, end, dtarray)
+    return end, planning.dtarray_to_moves(position, end, dtarray, True)
 
 
 def process_upload(app, document, filename):

@@ -168,7 +168,7 @@ class EiBotBoard(EiBotBase):
         """
         self.command('AM,%s,%s,%s,%s\r' % (v_initial, v_final, dx, dy))
 
-    def xy_move(self, m1, m2, duration):
+    def xy_move(self, m1, m2, duration, pen_up):
         """
         Move M1/M2 axes as: "SM,<move_duration>,<axis1>,<axis2><CR>"
 
@@ -256,7 +256,7 @@ class MockEiBotBoard(EiBotBase):
     def xy_accel_move(self, dx, dy, v_initial, v_final):
         log.warn("Mock EBB: xy_accel_move / Cannot simulate delay.")
 
-    def xy_move(self, m1, m2, duration):
+    def xy_move(self, m1, m2, duration, pen_up):
         dx = m1 + m2
         dy = m1 - m2
         dist = math.sqrt((dx**2) + (dy**2))

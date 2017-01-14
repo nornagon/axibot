@@ -1,6 +1,7 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
+from collections import defaultdict
 from datetime import timedelta
 import json
 
@@ -20,6 +21,15 @@ class Job(list):
     def duration(self):
         duration_ms = sum(action.time() for action in self)
         return timedelta(seconds=(duration_ms / 1000))
+
+    def duration_stats(self):
+        duration_by_action = defaultdict(float)
+        for action in self:
+            if isinstance(action, XYMove):
+                duration_by_action["XYMove (pen {})".format('up' if action.pen_up else 'down')] += action.time()
+            else:
+                duration_by_action["Pen servo"] += action.time()
+        return {k: timedelta(seconds=v / 1000) for k, v in duration_by_action.items()}
 
     def serialize(self, f):
         actions = []

@@ -65,7 +65,7 @@ def make_app(bot):
 
 
 def serve(opts):
-    if opts.mock:
+    if opts.mock or True:
         bot = MockEiBotBoard()
     else:
         bot = EiBotBoard.find()

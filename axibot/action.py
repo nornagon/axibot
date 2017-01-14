@@ -38,10 +38,11 @@ class PenDownMove(Move):
 class XYMove(Move):
     name = 'xy_move'
 
-    def __init__(self, m1, m2, duration):
+    def __init__(self, m1, m2, duration, pen_up):
         assert isinstance(m1, int), "got %r, wanted an int" % m1
         assert isinstance(m2, int), "got %r, wanted an int" % m2
         assert isinstance(duration, int), "got %r, wanted an int" % duration
+        assert isinstance(pen_up, bool), "got %r, wanted a bool" % pen_up
         assert (m1 != 0) or (m2 != 0), \
             "m1:%r, m2:%r, one must be nonzero" % (m1, m2)
         assert duration > 0, \
@@ -51,6 +52,7 @@ class XYMove(Move):
         self.m1 = m1
         self.m2 = m2
         self.duration = duration
+        self.pen_up = pen_up
 
     def time(self):
         return self.duration
